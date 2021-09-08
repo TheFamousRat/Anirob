@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=2]
+
+[ext_resource path="res://Resources/mat2.tres" type="Material" id=1]
+[ext_resource path="res://Resources/mat1.tres" type="Material" id=2]
+
+[sub_resource type="PlaneMesh" id=6]
+material = ExtResource( 2 )
+subdivide_width = 2
+subdivide_depth = 2
+
+[sub_resource type="CubeMesh" id=2]
+material = ExtResource( 1 )
+size = Vector3( 1, 1, 1 )
+
+[node name="MeshLibrary" type="Spatial"]
+
+[node name="Full" type="MeshInstance" parent="."]
+mesh = SubResource( 6 )
+material/0 = null
+
+[node name="Empty" type="MeshInstance" parent="."]
+mesh = SubResource( 2 )
+material/0 = null
