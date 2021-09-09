@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/home/home/thefamousrat/Documents/Godot/godot-cpp/godot-headers",
+                "/home/home/thefamousrat/Documents/Godot/godot-cpp/include/core",
+                "/home/home/thefamousrat/Documents/Godot/godot-cpp/include/gen",
+                "/home/home/thefamousrat/Documents/Godot/godot-cpp/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

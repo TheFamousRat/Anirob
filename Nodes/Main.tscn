@@ -1,9 +1,10 @@
-[gd_scene load_steps=14 format=2]
+[gd_scene load_steps=15 format=2]
 
 [ext_resource path="res://Nodes/FreeFlyCamera.gd" type="Script" id=1]
 [ext_resource path="res://Nodes/Main.gd" type="Script" id=2]
 [ext_resource path="res://Nodes/test.gd" type="Script" id=3]
 [ext_resource path="res://Resources/meshlib.tres" type="MeshLibrary" id=4]
+[ext_resource path="res://GDNative/CurveMapper/bin/Curver.gdns" type="Script" id=5]
 
 [sub_resource type="OpenSimplexNoise" id=6]
 seed = 843171809
@@ -64,7 +65,7 @@ noiseParams = SubResource( 6 )
 curve = SubResource( 11 )
 
 [node name="PathFollow" type="PathFollow" parent="test/Path"]
-transform = Transform( 0.325558, 0.668703, 0.668465, 0, 0.706981, -0.70723, -0.945521, 0.230245, 0.230163, -29.3313, 0.706982, 0.230245 )
+transform = Transform( 0.998011, -0.0608777, -0.0163328, 0, 0.259125, -0.965841, 0.0630307, 0.963922, 0.25861, 49.9391, 0.259126, 0.963923 )
 v_offset = 1.0
 rotation_mode = 4
 
@@ -88,11 +89,12 @@ __meta__ = {
 "_editor_floor_": Vector3( 0, 0, 0 )
 }
 
-[node name="MeshInstance" type="MeshInstance" parent="."]
-
 [node name="MeshInstance4" type="MeshInstance" parent="."]
 visible = false
 mesh = SubResource( 14 )
 material/0 = null
 
 [node name="Sections" type="Spatial" parent="."]
+
+[node name="Node" type="Node" parent="."]
+script = ExtResource( 5 )

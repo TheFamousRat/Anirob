@@ -2,7 +2,6 @@ extends Spatial
 
 const EPSILON : float = 1e-3
 
-onready var meshInst : MeshInstance = $MeshInstance
 onready var immGeom : ImmediateGeometry = $ImmediateGeometry
 onready var pathCurve : Curve3D = $test/Path.curve
 onready var pathFollow : PathFollow = $test/Path/PathFollow
@@ -24,6 +23,7 @@ func meshAlongCurve(meshIn : ArrayMesh, pathCurve : Path, destMesh : MeshInstanc
 			var v : Vector3 = mdt.get_vertex(vertIdx)
 			var vOffset : float = fmod(startOffset + (v.z - meshAABB.position.z), curve.get_baked_length())
 			
+#			#Tested the effect of using a PathFollow to sample the mesh (seemed slower)
 #			var curveOffsetTransform : Transform = samplePathAtOffset(pathCurve, vOffset)
 #			var curvePos : Vector3 = curveOffsetTransform.origin
 #			var basisCorr : Basis = curveOffsetTransform.basis.orthonormalized()
@@ -70,8 +70,6 @@ func meshAroundCurve(meshIn : ArrayMesh, pathCurve : Path, startCurveOffset : fl
 	var retArr : ArrayMesh = ArrayMesh.new()
 	var circleRadius : float = circlePerimeter / TAU
 	
-	print(usedAABB)
-	
 	var curve : Curve3D = pathCurve.curve
 	
 	for surfIdx in meshIn.get_surface_count():
@@ -109,7 +107,8 @@ func wrapGridmapLineAroundCurve(gridmap : GridMap, lineXCoordinate : int, startC
 	"""
 	var zCoord : int = 0
 	
-	#Creating surface tools containing the geometry of the 
+	#Creating surface tools containing the geometry of the different surfaces
+	#Differents parts with the same material are combined together
 	var lineItems : PoolIntArray = []
 	var surfTools : Dictionary = {}
 	while gridmap.get_cell_item(lineXCoordinate, 0, zCoord) != -1:
@@ -126,15 +125,19 @@ func wrapGridmapLineAroundCurve(gridmap : GridMap, lineXCoordinate : int, startC
 		
 		zCoord += 1
 	
+	#Creating the bounding box based on the cells (and not the geometry, since it might vary)
 	var aabbOrigin : Vector3 = gridmap.map_to_world(lineXCoordinate, 0, 0) - (gridmap.cell_size / 2.0)
 	var aabbSize : Vector3 = gridmap.cell_size * lineItems.size()
 	var usedAABB : AABB = AABB(aabbOrigin, aabbSize)
 	
+	#Creating an ArrayMesh containing all the combined SurfaceTool
 	var lineMesh : ArrayMesh = ArrayMesh.new()
 	for mat in surfTools:
-		lineMesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surfTools[mat].commit_to_arrays())
+		var surfTool : SurfaceTool = surfTools[mat]
+		lineMesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surfTool.commit_to_arrays())
 		lineMesh.surface_set_material(lineMesh.get_surface_count() - 1, mat)
 	
+	#Warping the geometry of the combined surfaces onto a circle around the curve
 	var sectionMeshInst : MeshInstance = MeshInstance.new()
 	$Sections.add_child(sectionMeshInst)
 	meshAroundCurve(lineMesh, $test/Path, startCurveOffset, 0.0, lineItems.size() * gridmap.cell_size.z, sectionMeshInst, usedAABB)
@@ -156,11 +159,9 @@ func _ready():
 	
 	var start : float = OS.get_ticks_msec()
 	
-	for j in range(3):
-		for i in range(8):
-			wrapGridmapLineAroundCurve($GridMap, i, (i + j * 8) * $GridMap.cell_size.x)
+	for i in range(3):
+		$Node.wrapGridmapLineAroundCurve($GridMap, 0, 7, i * $GridMap.cell_size.x * 9, $test/Path)
 
-	
 	var end : float = OS.get_ticks_msec()
 	print(end - start)
 
