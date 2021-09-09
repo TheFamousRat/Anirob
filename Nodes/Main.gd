@@ -63,13 +63,14 @@ func appendCurveToOtherCurve(curveToAppend : Curve3D, targetCurve : Curve3D):
 		targetCurve.set_point_in(newPointIdx, basisTot * curveToAppend.get_point_in(pIdx))
 		targetCurve.set_point_out(newPointIdx, basisTot * curveToAppend.get_point_out(pIdx))
 
-func meshAroundCurve(meshIn : ArrayMesh, pathCurve : Path, startCurveOffset : float, startCircleOffset : float, circlePerimeter : float, destMesh : MeshInstance):
+func meshAroundCurve(meshIn : ArrayMesh, pathCurve : Path, startCurveOffset : float, startCircleOffset : float, circlePerimeter : float, destMesh : MeshInstance, usedAABB : AABB):
 	"""
 	Deforms the geometry of a given mesh along a curve
 	"""
 	var retArr : ArrayMesh = ArrayMesh.new()
-	var meshAABB : AABB = meshIn.get_aabb()
 	var circleRadius : float = circlePerimeter / TAU
+	
+	print(usedAABB)
 	
 	var curve : Curve3D = pathCurve.curve
 	
@@ -79,7 +80,7 @@ func meshAroundCurve(meshIn : ArrayMesh, pathCurve : Path, startCurveOffset : fl
 		
 		for vertIdx in mdt.get_vertex_count():
 			var v : Vector3 = mdt.get_vertex(vertIdx)
-			var vRel : Vector3 = v - meshAABB.position
+			var vRel : Vector3 = v - usedAABB.position
 			var vOffset : float = fmod(startCurveOffset + vRel.x, curve.get_baked_length())
 			
 			#Getting the axis of the circle at that point on the curve
@@ -103,8 +104,12 @@ func meshAroundCurve(meshIn : ArrayMesh, pathCurve : Path, startCurveOffset : fl
 	destMesh.mesh = retArr
 
 func wrapGridmapLineAroundCurve(gridmap : GridMap, lineXCoordinate : int, startCurveOffset : float):
+	"""
+	Warps the element of a GridMap line (so all the occupied cells of a given x coordinates) around a curve
+	"""
 	var zCoord : int = 0
 	
+	#Creating surface tools containing the geometry of the 
 	var lineItems : PoolIntArray = []
 	var surfTools : Dictionary = {}
 	while gridmap.get_cell_item(lineXCoordinate, 0, zCoord) != -1:
@@ -121,6 +126,10 @@ func wrapGridmapLineAroundCurve(gridmap : GridMap, lineXCoordinate : int, startC
 		
 		zCoord += 1
 	
+	var aabbOrigin : Vector3 = gridmap.map_to_world(lineXCoordinate, 0, 0) - (gridmap.cell_size / 2.0)
+	var aabbSize : Vector3 = gridmap.cell_size * lineItems.size()
+	var usedAABB : AABB = AABB(aabbOrigin, aabbSize)
+	
 	var lineMesh : ArrayMesh = ArrayMesh.new()
 	for mat in surfTools:
 		lineMesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surfTools[mat].commit_to_arrays())
@@ -128,7 +137,7 @@ func wrapGridmapLineAroundCurve(gridmap : GridMap, lineXCoordinate : int, startC
 	
 	var sectionMeshInst : MeshInstance = MeshInstance.new()
 	$Sections.add_child(sectionMeshInst)
-	meshAroundCurve(lineMesh, $test/Path, startCurveOffset, 0.0, lineItems.size() * gridmap.cell_size.z, sectionMeshInst)
+	meshAroundCurve(lineMesh, $test/Path, startCurveOffset, 0.0, lineItems.size() * gridmap.cell_size.z, sectionMeshInst, usedAABB)
 
 func preprocessMeshLib(meshlib : MeshLibrary):
 	"""
@@ -138,6 +147,8 @@ func preprocessMeshLib(meshlib : MeshLibrary):
 		meshlib.set_item_mesh(itemIdx, Utilities.convertMeshToArrayMesh(meshlib.get_item_mesh(itemIdx)))
 
 func _ready():
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	
 	$test.genNewCurve()
 	Utilities.drawCurve(pathCurve, immGeom)
 	
@@ -146,8 +157,8 @@ func _ready():
 	var start : float = OS.get_ticks_msec()
 	
 	for j in range(3):
-		for i in range(4):
-			wrapGridmapLineAroundCurve($GridMap, i, (i + j *4) * $GridMap.cell_size.x)
+		for i in range(8):
+			wrapGridmapLineAroundCurve($GridMap, i, (i + j * 8) * $GridMap.cell_size.x)
 
 	
 	var end : float = OS.get_ticks_msec()
