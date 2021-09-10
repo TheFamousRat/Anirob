@@ -63,6 +63,58 @@ func appendCurveToOtherCurve(curveToAppend : Curve3D, targetCurve : Curve3D):
 		targetCurve.set_point_in(newPointIdx, basisTot * curveToAppend.get_point_in(pIdx))
 		targetCurve.set_point_out(newPointIdx, basisTot * curveToAppend.get_point_out(pIdx))
 
+func getTransformOfCircleAroundCurve(path : Path, curveOffset : float, circleRadius : float, circleOffset : float) -> Transform:
+	"""
+	Computes the Transform matrix on the circle around a point of the curve
+	"""
+	var curve : Curve3D = path.curve
+	
+	var curvePos : Vector3 = curve.interpolate_baked(curveOffset, true)
+	var curveNorm : Vector3 = curve.interpolate_baked_up_vector(curveOffset, true)
+	var curveZ : Vector3 = (curve.interpolate_baked(curveOffset + EPSILON, true) - curvePos).normalized()
+	var curveX : Vector3 = -curveZ.cross(curveNorm)
+	
+	var circleNormOffset : float = circleOffset / circleRadius
+	var circlePos : Vector3 = curvePos + circleRadius * (cos(circleNormOffset) * curveX + sin(circleNormOffset) * curveNorm)
+	var circleX : Vector3 = (circlePos - curvePos).normalized()
+	var circleZ : Vector3 = circleX.cross(curveZ)
+	
+	var ret : Transform = Transform.IDENTITY
+	
+	ret.origin = circlePos
+	ret.basis = Basis(curveZ, -circleX, circleZ)
+	
+	return ret
+	
+func wrapGridmapLineAroundCurve_noDeform(gridmap : GridMap, lineXStart : int, lineXEnd : int, startCurveOffset : float, path : Path):
+	
+	for lineXCoordinate in range(lineXStart, lineXEnd + 1):
+		var zCoord : int = 0
+		var cellItemIdx : int = gridmap.get_cell_item(lineXCoordinate, 0, zCoord)
+		
+		var lineItemsIdx : Array = []
+		while cellItemIdx != -1:
+			lineItemsIdx.append(cellItemIdx)
+			
+			zCoord += 1
+			cellItemIdx = gridmap.get_cell_item(lineXCoordinate, 0, zCoord)
+		
+		var lineAABB : AABB = AABB()
+		lineAABB.position = gridmap.map_to_world(lineXStart, 0, 0) - (gridmap.cell_size / 2.0)
+		lineAABB.size = Vector3(gridmap.cell_size.x, gridmap.cell_size.y, gridmap.cell_size.z * lineItemsIdx.size()) 
+		var circleRadius : float = lineAABB.size.z / TAU
+		
+		for i in range(lineItemsIdx.size()):
+			var itemIdx : int = lineItemsIdx[i]
+			
+			var chunkMeshInst : MeshInstance = MeshInstance.new()
+			$Sections.add_child(chunkMeshInst)
+			
+			chunkMeshInst.mesh = gridmap.mesh_library.get_item_mesh(itemIdx)
+			chunkMeshInst.transform = getTransformOfCircleAroundCurve(path, startCurveOffset, circleRadius, gridmap.cell_size.z * i)
+			
+		startCurveOffset += lineAABB.size.x
+
 func preprocessMeshLib(meshlib : MeshLibrary):
 	"""
 	Converts all elements of a mesh library to ArrayMesh objects
@@ -78,13 +130,27 @@ func _ready():
 	
 	preprocessMeshLib($GridMap.mesh_library)
 	
-	var start : float = OS.get_ticks_msec()
+	if true:
+		var start : float = OS.get_ticks_msec()
+		
+		for i in range(3):
+			wrapGridmapLineAroundCurve_noDeform($GridMap, 0, 7, i * $GridMap.cell_size.x * 8, $test/Path)
+		
+		var end : float = OS.get_ticks_msec()
+		print(end - start)
 	
-	for i in range(3):
-		$Node.wrapGridmapLineAroundCurve($GridMap, 0, 7, i * $GridMap.cell_size.x * 9, $test/Path)
+	if false:
+		var start : float = OS.get_ticks_msec()
+		
+		for i in range(3):
+			$Node.wrapGridmapLineAroundCurve($GridMap, 0, 7, i * $GridMap.cell_size.x * 9, $test/Path)
 
-	var end : float = OS.get_ticks_msec()
-	print(end - start)
+		var end : float = OS.get_ticks_msec()
+		print(end - start)
 
+#var circleOffset : float = 0.0
 func _process(delta):
 	pathFollow.offset += delta * 5.0
+	
+	#circleOffset += delta * 1.0
+	#$MeshInstance.transform = getTransformOfCircleAroundCurve($test/Path, 10.0, 5.0, circleOffset)
