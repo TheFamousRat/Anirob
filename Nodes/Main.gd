@@ -102,7 +102,9 @@ func wrapGridmapLineAroundCurve_noDeform(gridmap : GridMap, lineXStart : int, li
 		var lineAABB : AABB = AABB()
 		lineAABB.position = gridmap.map_to_world(lineXStart, 0, 0) - (gridmap.cell_size / 2.0)
 		lineAABB.size = Vector3(gridmap.cell_size.x, gridmap.cell_size.y, gridmap.cell_size.z * lineItemsIdx.size()) 
-		var circleRadius : float = lineAABB.size.z / TAU
+		
+		var circleRadius : float = ((gridmap.cell_size.z / 2.0) * tan(PI / lineItemsIdx.size())) + 1.5 * gridmap.cell_size.x
+		var circleSectionSize : float = TAU * circleRadius / lineItemsIdx.size()
 		
 		for i in range(lineItemsIdx.size()):
 			var itemIdx : int = lineItemsIdx[i]
@@ -111,7 +113,7 @@ func wrapGridmapLineAroundCurve_noDeform(gridmap : GridMap, lineXStart : int, li
 			$Sections.add_child(chunkMeshInst)
 			
 			chunkMeshInst.mesh = gridmap.mesh_library.get_item_mesh(itemIdx)
-			chunkMeshInst.transform = getTransformOfCircleAroundCurve(path, startCurveOffset, circleRadius, gridmap.cell_size.z * i)
+			chunkMeshInst.transform = getTransformOfCircleAroundCurve(path, startCurveOffset, circleRadius, circleSectionSize * i)
 			
 		startCurveOffset += lineAABB.size.x
 
