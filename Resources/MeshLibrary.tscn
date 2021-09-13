@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://Resources/mat2.tres" type="Material" id=1]
 [ext_resource path="res://Resources/mat1.tres" type="Material" id=2]
@@ -14,6 +14,8 @@ size = Vector3( 1, 1, 1 )
 
 [sub_resource type="CubeMesh" id=7]
 
+[sub_resource type="PrismMesh" id=8]
+
 [node name="MeshLibrary" type="Spatial"]
 
 [node name="Full" type="MeshInstance" parent="."]
@@ -27,4 +29,9 @@ material/0 = null
 [node name="Test" type="MeshInstance" parent="."]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 5.51185, 0, 0 )
 mesh = SubResource( 7 )
+material/0 = null
+
+[node name="Prism" type="MeshInstance" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -5.23394, 0, 0 )
+mesh = SubResource( 8 )
 material/0 = null

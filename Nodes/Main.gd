@@ -1,6 +1,6 @@
 extends Spatial
 
-const EPSILON : float = 1e-3
+const EPSILON : float = 1e-2
 
 onready var immGeom : ImmediateGeometry = $ImmediateGeometry
 onready var pathCurve : Curve3D = $test/Path.curve
@@ -72,20 +72,21 @@ func getTransformOfCircleAroundCurve(path : Path, curveOffset : float, circleRad
 	var curvePos : Vector3 = curve.interpolate_baked(curveOffset, true)
 	var curveNorm : Vector3 = curve.interpolate_baked_up_vector(curveOffset, true)
 	var curveZ : Vector3 = (curve.interpolate_baked(curveOffset + EPSILON, true) - curvePos).normalized()
-	var curveX : Vector3 = -curveZ.cross(curveNorm)
+	var curveX : Vector3 = curveZ.cross(curveNorm)
 	
 	var circleNormOffset : float = circleOffset / circleRadius
-	var circlePos : Vector3 = curvePos + circleRadius * (cos(circleNormOffset) * curveX + sin(circleNormOffset) * curveNorm)
-	var circleX : Vector3 = (circlePos - curvePos).normalized()
+	var circleX : Vector3 = cos(circleNormOffset) * curveX + sin(circleNormOffset) * curveNorm
+	curveZ = circleX.cross(cos(circleNormOffset + EPSILON) * curveX + sin(circleNormOffset + EPSILON) * curveNorm).normalized()
+	var circlePos : Vector3 = curvePos - circleRadius * circleX
 	var circleZ : Vector3 = circleX.cross(curveZ)
 	
 	var ret : Transform = Transform.IDENTITY
 	
 	ret.origin = circlePos
-	ret.basis = Basis(curveZ, -circleX, circleZ)
+	ret.basis = Basis(curveZ, circleX, circleZ)
 	
 	return ret
-	
+
 func wrapGridmapLineAroundCurve_noDeform(gridmap : GridMap, lineXStart : int, lineXEnd : int, startCurveOffset : float, path : Path):
 	
 	for lineXCoordinate in range(lineXStart, lineXEnd + 1):
@@ -99,23 +100,24 @@ func wrapGridmapLineAroundCurve_noDeform(gridmap : GridMap, lineXStart : int, li
 			zCoord += 1
 			cellItemIdx = gridmap.get_cell_item(lineXCoordinate, 0, zCoord)
 		
-		var lineAABB : AABB = AABB()
-		lineAABB.position = gridmap.map_to_world(lineXStart, 0, 0) - (gridmap.cell_size / 2.0)
-		lineAABB.size = Vector3(gridmap.cell_size.x, gridmap.cell_size.y, gridmap.cell_size.z * lineItemsIdx.size()) 
-		
-		var circleRadius : float = ((gridmap.cell_size.z / 2.0) * tan(PI / lineItemsIdx.size())) + 1.5 * gridmap.cell_size.x
-		var circleSectionSize : float = TAU * circleRadius / lineItemsIdx.size()
-		
-		for i in range(lineItemsIdx.size()):
-			var itemIdx : int = lineItemsIdx[i]
+		if lineItemsIdx.size() > 0:
+			var lineAABB : AABB = AABB()
+			lineAABB.position = gridmap.map_to_world(lineXStart, 0, 0) - (gridmap.cell_size / 2.0)
+			lineAABB.size = Vector3(gridmap.cell_size.x, gridmap.cell_size.y, gridmap.cell_size.z * lineItemsIdx.size()) 
 			
-			var chunkMeshInst : MeshInstance = MeshInstance.new()
-			$Sections.add_child(chunkMeshInst)
+			var circleRadius : float = ((gridmap.cell_size.z / 2.0) / tan(PI / lineItemsIdx.size())) + 0.5 * gridmap.cell_size.x
+			var circleSectionSize : float = TAU * circleRadius / lineItemsIdx.size()
 			
-			chunkMeshInst.mesh = gridmap.mesh_library.get_item_mesh(itemIdx)
-			chunkMeshInst.transform = getTransformOfCircleAroundCurve(path, startCurveOffset, circleRadius, circleSectionSize * i)
-			
-		startCurveOffset += lineAABB.size.x
+			for i in range(lineItemsIdx.size()):
+				var itemIdx : int = lineItemsIdx[i]
+				
+				var chunkMeshInst : MeshInstance = MeshInstance.new()
+				$Sections.add_child(chunkMeshInst)
+				
+				chunkMeshInst.mesh = gridmap.mesh_library.get_item_mesh(itemIdx)
+				chunkMeshInst.transform = getTransformOfCircleAroundCurve(path, startCurveOffset, circleRadius, circleSectionSize * i)
+				
+			startCurveOffset += lineAABB.size.x
 
 func preprocessMeshLib(meshlib : MeshLibrary):
 	"""
@@ -135,7 +137,7 @@ func _ready():
 	if true:
 		var start : float = OS.get_ticks_msec()
 		
-		for i in range(3):
+		for i in range(10):
 			wrapGridmapLineAroundCurve_noDeform($GridMap, 0, 7, i * $GridMap.cell_size.x * 8, $test/Path)
 		
 		var end : float = OS.get_ticks_msec()
