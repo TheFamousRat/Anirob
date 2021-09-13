@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=2]
+[gd_scene load_steps=8 format=2]
 
 [ext_resource path="res://Resources/mat2.tres" type="Material" id=1]
 [ext_resource path="res://Resources/mat1.tres" type="Material" id=2]
@@ -14,7 +14,10 @@ size = Vector3( 1, 1, 1 )
 
 [sub_resource type="CubeMesh" id=7]
 
+[sub_resource type="SpatialMaterial" id=9]
+
 [sub_resource type="PrismMesh" id=8]
+material = SubResource( 9 )
 
 [node name="MeshLibrary" type="Spatial"]
 

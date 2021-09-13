@@ -1,45 +1,10 @@
 extends Spatial
 
-const EPSILON : float = 1e-2
+const EPSILON : float = 1e-1
 
 onready var immGeom : ImmediateGeometry = $ImmediateGeometry
 onready var pathCurve : Curve3D = $test/Path.curve
 onready var pathFollow : PathFollow = $test/Path/PathFollow
-
-func meshAlongCurve(meshIn : ArrayMesh, pathCurve : Path, destMesh : MeshInstance, startOffset : float = 0.0):
-	"""
-	Deforms the geometry of a given mesh along a curve
-	"""
-	var retArr : ArrayMesh = ArrayMesh.new()
-	var meshAABB : AABB = meshIn.get_aabb()
-	
-	var curve : Curve3D = pathCurve.curve
-	
-	for surfIdx in meshIn.get_surface_count():
-		var mdt : MeshDataTool = MeshDataTool.new()
-		mdt.create_from_surface(meshIn, surfIdx)
-		
-		for vertIdx in mdt.get_vertex_count():
-			var v : Vector3 = mdt.get_vertex(vertIdx)
-			var vOffset : float = fmod(startOffset + (v.z - meshAABB.position.z), curve.get_baked_length())
-			
-#			#Tested the effect of using a PathFollow to sample the mesh (seemed slower)
-#			var curveOffsetTransform : Transform = samplePathAtOffset(pathCurve, vOffset)
-#			var curvePos : Vector3 = curveOffsetTransform.origin
-#			var basisCorr : Basis = curveOffsetTransform.basis.orthonormalized()
-#			var curveNorm : Vector3 = basisCorr.y
-#			var curveX : Vector3 = basisCorr.x
-			
-			var curvePos : Vector3 = curve.interpolate_baked(vOffset, true)
-			var curveNorm : Vector3 = curve.interpolate_baked_up_vector(vOffset, true)
-			var curveZ : Vector3 = (curve.interpolate_baked(vOffset + EPSILON, true) - curvePos).normalized()
-			var curveX : Vector3 = -curveZ.cross(curveNorm)
-			
-			mdt.set_vertex(vertIdx, curvePos + curveX * v.x + curveNorm * v.y)
-		
-		mdt.commit_to_surface(retArr)
-	
-	destMesh.mesh = retArr
 
 func appendCurveToOtherCurve(curveToAppend : Curve3D, targetCurve : Curve3D):
 	"""
@@ -63,10 +28,7 @@ func appendCurveToOtherCurve(curveToAppend : Curve3D, targetCurve : Curve3D):
 		targetCurve.set_point_in(newPointIdx, basisTot * curveToAppend.get_point_in(pIdx))
 		targetCurve.set_point_out(newPointIdx, basisTot * curveToAppend.get_point_out(pIdx))
 
-func getTransformOfCircleAroundCurve(path : Path, curveOffset : float, circleRadius : float, circleOffset : float) -> Transform:
-	"""
-	Computes the Transform matrix on the circle around a point of the curve
-	"""
+func getCurveTransform(path : Path, curveOffset : float) -> Transform:
 	var curve : Curve3D = path.curve
 	
 	var curvePos : Vector3 = curve.interpolate_baked(curveOffset, true)
@@ -74,18 +36,20 @@ func getTransformOfCircleAroundCurve(path : Path, curveOffset : float, circleRad
 	var curveZ : Vector3 = (curve.interpolate_baked(curveOffset + EPSILON, true) - curvePos).normalized()
 	var curveX : Vector3 = curveZ.cross(curveNorm)
 	
+	return Transform(Basis(curveZ, curveNorm, curveX), curvePos)
+
+func getTransformOfCircleAroundCurve(path : Path, curveOffset : float, circleRadius : float, circleOffset : float) -> Transform:
+	"""
+	Computes the Transform matrix on the circle around a point of the curve
+	"""
+	var curveTrans : Transform = getCurveTransform(path, curveOffset)
+	
 	var circleNormOffset : float = circleOffset / circleRadius
-	var circleX : Vector3 = cos(circleNormOffset) * curveX + sin(circleNormOffset) * curveNorm
-	curveZ = circleX.cross(cos(circleNormOffset + EPSILON) * curveX + sin(circleNormOffset + EPSILON) * curveNorm).normalized()
-	var circlePos : Vector3 = curvePos - circleRadius * circleX
-	var circleZ : Vector3 = circleX.cross(curveZ)
+	var circleX : Vector3 = cos(circleNormOffset) * curveTrans.basis.z + sin(circleNormOffset) * curveTrans.basis.y
+	var circleNormVec : Vector3 = circleX.cross(cos(circleNormOffset + 1.0) * curveTrans.basis.z + sin(circleNormOffset + 1.0) * curveTrans.basis.y).normalized()
+	var circlePos : Vector3 = curveTrans.origin - circleRadius * circleX
 	
-	var ret : Transform = Transform.IDENTITY
-	
-	ret.origin = circlePos
-	ret.basis = Basis(curveZ, circleX, circleZ)
-	
-	return ret
+	return Transform(Basis(circleNormVec, circleX, circleX.cross(circleNormVec)), circlePos)
 
 func wrapGridmapLineAroundCurve_noDeform(gridmap : GridMap, lineXStart : int, lineXEnd : int, startCurveOffset : float, path : Path):
 	
@@ -138,17 +102,8 @@ func _ready():
 		var start : float = OS.get_ticks_msec()
 		
 		for i in range(10):
-			wrapGridmapLineAroundCurve_noDeform($GridMap, 0, 7, i * $GridMap.cell_size.x * 8, $test/Path)
+			wrapGridmapLineAroundCurve_noDeform($GridMap, 0, 8, i * $GridMap.cell_size.x * 9, $test/Path)
 		
-		var end : float = OS.get_ticks_msec()
-		print(end - start)
-	
-	if false:
-		var start : float = OS.get_ticks_msec()
-		
-		for i in range(3):
-			$Node.wrapGridmapLineAroundCurve($GridMap, 0, 7, i * $GridMap.cell_size.x * 9, $test/Path)
-
 		var end : float = OS.get_ticks_msec()
 		print(end - start)
 
